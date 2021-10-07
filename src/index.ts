@@ -1,21 +1,108 @@
-interface Human {
-  name: string;
-  age: number;
-  gender: string;
+import * as CryptoJS from "crypto-js";
+class Block {
+  static calculateBlockHash = (
+    index: number,
+    previousHash: string,
+    timestamp: number,
+    data: string
+  ): string =>
+    CryptoJS.SHA256(index + previousHash + timestamp + data).toString();
+
+  static validateStructure = (aBlock: Block): boolean =>
+    typeof aBlock.index === "number" &&
+    typeof aBlock.hash === "string" &&
+    typeof aBlock.previousHash === "string" &&
+    typeof aBlock.timestamp === "number" &&
+    typeof aBlock.data === "string";
+
+  public index: number;
+  public hash: string;
+  public previousHash: string;
+  public data: string;
+  public timestamp: number;
+
+  constructor(
+    index: number,
+    hash: string,
+    previousHash: string,
+    data: string,
+    timestamp: number
+  ) {
+    this.index = index;
+    this.hash = hash;
+    this.previousHash = previousHash;
+    this.data = data;
+    this.timestamp = timestamp;
+  }
 }
 
-const person = {
-  name: "gwon",
-  age: 22,
-  gender: "male",
-};
-const sayHi = (person: Human): string => {
-  //변수 뒤에 : 를 붙이고 타입을 적으면 타입체크를 함. 인터페이스를 만들어서 타입으로 설정할 수 있음 ex) Human
-  //param 뒤에 ? 붙이면 선택사항
-  //함수 () 뒤에  :를 붙이고 타입을 직으면 반환타입 정함
-  return `Hello ${person.name}, you are ${person.age}, you are a ${person.gender}`;
+const genesisBlock: Block = new Block(0, "10101001010101", "", "Hello", 123456);
+
+let blockchain: Block[] = [genesisBlock];
+//blockchain.push('stuff') <-- 타입체크때문에 에러뜸.
+
+const getBlockchain = (): Block[] => blockchain;
+
+const getLatestBlock = (): Block => getBlockchain()[blockchain.length - 1];
+
+const getNewTimeStamp = (): number => Math.round(new Date().getTime() / 1000);
+
+const createNewBlock = (data: string): Block => {
+  const previousBlock: Block = getLatestBlock();
+  const newIndex: number = previousBlock.index + 1;
+  const newTimestamp: number = getNewTimeStamp();
+  const newHash: string = Block.calculateBlockHash(
+    newIndex,
+    previousBlock.hash,
+    newTimestamp,
+    data
+  );
+  const newBlock: Block = new Block(
+    newIndex,
+    newHash,
+    previousBlock.hash,
+    data,
+    newTimestamp
+  );
+  addBlock(newBlock);
+  return newBlock;
 };
 
-console.log(person);
+const getHashforBlock = (aBlock: Block): string =>
+  Block.calculateBlockHash(
+    aBlock.index,
+    aBlock.previousHash,
+    aBlock.timestamp,
+    aBlock.data
+  );
 
-export {}; //이 파일이 모듈이 된다고 알려줌
+const isBlockValid = (candidateBlock: Block, previousBlock: Block): boolean => {
+  if (!Block.validateStructure(candidateBlock)) {
+    console.log("validateStructure fail");
+    return false;
+  } else if (previousBlock.index + 1 !== candidateBlock.index) {
+    console.log("index fail");
+    return false;
+  } else if (previousBlock.hash !== candidateBlock.previousHash) {
+    console.log("hash fail");
+    return false;
+  } else if (getHashforBlock(candidateBlock) !== candidateBlock.hash) {
+    console.log("hash fail 2");
+    return false;
+  } else {
+    return true;
+  }
+};
+
+const addBlock = (candidateBlock: Block): void => {
+  if (isBlockValid(candidateBlock, getLatestBlock())) {
+    blockchain.push(candidateBlock);
+  }
+};
+
+createNewBlock("second block");
+createNewBlock("third block");
+createNewBlock("fourth block");
+
+console.log(blockchain);
+export {};
